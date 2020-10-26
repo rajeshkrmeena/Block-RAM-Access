@@ -1,3 +1,6 @@
 # Block-RAM-Access
 
-Reading and wrinting a memory location 
+1. Reading and wrinting a BRAM memory location through processor.
+2. Reading and wrinting a BRAM and DDR memory location through Custom IP.  
+
+
