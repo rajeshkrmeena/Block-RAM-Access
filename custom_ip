@@ -1,0 +1,151 @@
+#include <stdio.h>
+#include "platform.h"
+#include "xil_printf.h"
+#include "test_mip.h"
+#include "xil_io.h"
+
+
+#define BRAM_BASE XPAR_AXI_BRAM_CTRL_0_S_AXI_BASEADDR
+#define BRAM_HIGH XPAR_AXI_BRAM_CTRL_0_S_AXI_HIGHADDR
+
+#define BASEADDR       XPAR_TEST_MIP_0_S00_AXI_BASEADDR
+#define CMD_CNTRL      TEST_MIP_S00_AXI_SLV_REG0_OFFSET
+#define ADRRESS        TEST_MIP_S00_AXI_SLV_REG1_OFFSET
+#define WRITE_DATA     TEST_MIP_S00_AXI_SLV_REG2_OFFSET
+#define READ_DATA      TEST_MIP_S00_AXI_SLV_REG3_OFFSET
+
+
+
+#define WRITE_COMMAND 0x0000CDAC
+#define READ_COMMAND  0xCDAC2020
+
+
+#define No_of_TXN 50
+#define DDR_ADDRESS 0x4000
+
+#define BRAM_INITIAL_VAL 0xCDAC2000
+#define DDR_INITIAL_VAL  0xCDAC5000
+
+int wait_data ()
+{
+	TEST_MIP_mWriteReg(BASEADDR, READ_DATA, 0);
+
+  	int value = 0;
+    while(!value)
+	     { value = TEST_MIP_mReadReg(BASEADDR, TEST_MIP_S00_AXI_SLV_REG3_OFFSET ); }
+
+    return 0;
+}
+
+
+
+int main()
+{
+    init_platform();
+    int value=0;
+
+    print(" Hello World, Testing MIP (MY IP) Read and Write functionality \n\r");
+/*
+   for(int i=0; i<4; ++i) {
+
+	   TEST_MIP_mWriteReg(BASEADDR,0+4*i, 0xCDAC2020+2*i);
+   }
+
+   for(int i=0; i<4; ++i) {
+    value = TEST_MIP_mReadReg(BASEADDR,0+4*i);
+    printf("Value : 0x%x ", value);
+    printf("\n");
+   }
+*/
+
+
+    printf("\n");
+	xil_printf("Writing %d Words to Block Memory Region : 0x%x - 0x%x:", No_of_TXN, BRAM_BASE, BRAM_HIGH); printf("\n");
+	volatile uint32_t *ptr = (volatile uint32_t*)(BRAM_BASE);
+	for (int h = 0; h < No_of_TXN; h++) {
+		*ptr++ = 0x0;
+	}
+
+	//xil_printf("Writing %d Words to Block Memory Region through MIP with initial value 0x%x ", No_of_TXN, BRAM_INITIAL_VAL); printf("\n");
+	xil_printf("Writing %d Words to BRAM through MIP with initial value 0x%x ", No_of_TXN, BRAM_INITIAL_VAL); printf("\n");
+
+	for (int h = 0; h < No_of_TXN; h++) {
+
+	    TEST_MIP_mWriteReg(BASEADDR, ADRRESS, BRAM_BASE+4*h); //Address
+	    TEST_MIP_mWriteReg(BASEADDR, WRITE_DATA, BRAM_INITIAL_VAL+h);  // DATA
+	    TEST_MIP_mWriteReg(BASEADDR, CMD_CNTRL, WRITE_COMMAND);  // Initiate TXN
+
+	}
+
+       printf(" Reading the Block Memory Region through Processor");  printf("\n");
+	   volatile uint32_t *ptr2 = (volatile uint32_t*)(BRAM_BASE);
+	   for (int h = 0; h < No_of_TXN; h++)
+	   {
+	   		xil_printf(" Value is   0x%p: %x", ptr2, *ptr2); printf("\n");
+	   		*ptr2++;
+	   	}
+
+
+    print(" Reading the Block Memory Region through MIP");  printf("\n");
+    for (int h = 0; h < No_of_TXN; h++)
+	 {
+	    TEST_MIP_mWriteReg(BASEADDR, ADRRESS, BRAM_BASE+4*h); //Address
+	    TEST_MIP_mWriteReg(BASEADDR, CMD_CNTRL, READ_COMMAND);  // Initiate TXN
+	    wait_data ();
+	    value = TEST_MIP_mReadReg(BASEADDR, READ_DATA);
+	    printf("Value at 0x%x : 0x%x ",BRAM_BASE+4*h, value);
+
+	    printf("\n");
+
+	 }
+
+    printf("\n");   printf("\n");
+    xil_printf("Writing %d Words to DDR through MIP at 0x%x with initial value 0x%x ", No_of_TXN, DDR_ADDRESS, DDR_INITIAL_VAL); printf("\n");
+	for (int h = 0; h < No_of_TXN; h++) {
+
+	    TEST_MIP_mWriteReg(BASEADDR, ADRRESS, DDR_ADDRESS+4*h); //Address
+	    TEST_MIP_mWriteReg(BASEADDR, WRITE_DATA, DDR_INITIAL_VAL+h);  // DATA
+	    TEST_MIP_mWriteReg(BASEADDR, CMD_CNTRL, WRITE_COMMAND);  // Initiate TXN
+
+	}
+
+	printf(" Reading the DDR Region through Processor");  printf("\n");
+	   for (int h = 0; h < No_of_TXN; h++)
+	   {
+		    value = Xil_In32(DDR_ADDRESS+4*h);
+	        printf("DDR_Value at  0x%x : 0x%x ",DDR_ADDRESS+4*h, value);  printf("\n");
+
+	   }
+
+
+	    print(" Reading the DDR Region through MIP");  printf("\n");
+	    for (int h = 0; h < No_of_TXN; h++)
+		 {
+		    TEST_MIP_mWriteReg(BASEADDR, ADRRESS, DDR_ADDRESS+4*h); //Address
+		    TEST_MIP_mWriteReg(BASEADDR, CMD_CNTRL, READ_COMMAND);  // Initiate TXN
+		    wait_data ();
+		    value = TEST_MIP_mReadReg(BASEADDR, READ_DATA);
+		    printf("DDR_Value at 0x%x : 0x%x ",DDR_ADDRESS+4*h, value);
+
+		    printf("\n");
+
+		 }
+
+
+
+	    printf("\n ***** Testing is Ended ***** \n ");
+
+
+
+    cleanup_platform();
+    return 0;
+}
+
+
+
+
+
+
+
+
+
