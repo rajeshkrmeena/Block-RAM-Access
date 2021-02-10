@@ -1,0 +1,87 @@
+#include <stdio.h>
+#include "platform.h"
+#include "xil_printf.h"
+#include "FFT_3D.h"
+#include "xil_io.h"
+
+#define BASEADDR       0x43C00000
+#define CMD_CNTRL      FFT_3D_S00_AXI_SLV_REG0_OFFSET
+#define ADRRESS        FFT_3D_S00_AXI_SLV_REG1_OFFSET
+
+#define No_of_TXN 50
+
+//#define DDR_ADDRESS_READ  0xFFFC0000
+#define DDR_ADDRESS_READ  0x00100800
+#define DDR_ADDRESS_WRITE 0x00200000
+
+
+#define DDR_INITIAL_VAL  0xCDAC5000
+
+
+int main()
+{
+    init_platform();
+
+     int value=0;
+
+    print(" Hello World, Testing MIP (MY IP) Read and Write functionality \n\r");
+
+   printf(" WRITE the DDR Region through Processor");  printf("\n");
+	   for (int h = 0; h < No_of_TXN; h++)
+	   {
+		    Xil_Out32(DDR_ADDRESS_READ+4*h, DDR_INITIAL_VAL+h);
+	        printf("DDR_Value at  0x%x : 0x%x ",DDR_ADDRESS_READ+4*h, DDR_INITIAL_VAL+h);  printf("\n");
+
+	   }
+
+
+
+	printf(" Reading the DDR Region through Processor");  printf("\n");
+	   for (int h = 0; h < No_of_TXN; h++)
+	   {
+		    value = Xil_In32(DDR_ADDRESS_READ+4*h);
+	        printf("DDR_Value at  0x%x : 0x%x ",DDR_ADDRESS_READ+4*h, value);  printf("\n");
+
+	   }
+
+	  value = FFT_3D_mReadReg(BASEADDR,CMD_CNTRL);
+      printf("status value : %d \n", value);
+
+    //-------------3DFFT----------------------------------------
+      FFT_3D_mWriteReg(BASEADDR,ADRRESS,DDR_ADDRESS_READ); // address
+    // for(int i=0; i<16; ++i){
+
+    	 FFT_3D_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
+        // FFT_3D_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
+    // }
+
+	  value = FFT_3D_mReadReg(BASEADDR,CMD_CNTRL);
+while(!(value & 0x00000002))
+{
+	  printf("STATUS.... %d\n", value);
+	  value = FFT_3D_mReadReg(BASEADDR,CMD_CNTRL);
+}
+printf("STATUS.... %d\n", value);
+
+FFT_3D_mWriteReg(BASEADDR,ADRRESS, DDR_ADDRESS_WRITE); // address
+for(int i=0; i<16; ++i){
+
+	 FFT_3D_mWriteReg(BASEADDR,CMD_CNTRL,0x00000004); // START READ ----
+  // FFT_3D_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
+}
+
+printf(" Reading the DDR Region through Processor");  printf("\n");
+   for (int h = 0; h < No_of_TXN; h++)
+   {
+	    value = Xil_In32(DDR_ADDRESS_WRITE+4*h);
+        printf("After OPERATINS...........DDR_Value at  0x%x : 0x%x ",DDR_ADDRESS_WRITE+4*h, value);  printf("\n");
+
+   }
+
+    printf("\n ***** Testing is Ended ***** \n ");
+
+
+    cleanup_platform();
+    return 0;
+}
+
