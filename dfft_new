@@ -1,0 +1,186 @@
+#include <stdio.h>
+#include "platform.h"
+#include "xil_printf.h"
+#include "FFT_WOB.h"
+#include "mip_brust.h"
+#include "xil_io.h"
+#include <stdio.h>
+ #include <stdlib.h>
+
+
+#define BASEADDR       XPAR_FFT_WOB_0_S00_AXI_BASEADDR
+#define CMD_CNTRL      FFT_WOB_S00_AXI_SLV_REG0_OFFSET
+#define ADRRESS        FFT_WOB_S00_AXI_SLV_REG1_OFFSET
+
+#define No_of_TXN 512
+
+//#define DDR_ADDRESS_READ  0xFFFC0000
+#define DDR_ADDRESS_READ  0x00100000
+//#define DDR_ADDRESS_READ  0x00004000
+#define DDR_ADDRESS_WRITE 0x00200000
+
+
+
+#define BASEADDR_0       XPAR_MIP_BRUST_0_S00_AXI_BASEADDR
+#define CMD_CNTRL_0      MIP_BRUST_S00_AXI_SLV_REG0_OFFSET
+#define ADRRESS_0        MIP_BRUST_S00_AXI_SLV_REG1_OFFSET
+#define WRITE_DATA_0    MIP_BRUST_S00_AXI_SLV_REG2_OFFSET
+#define READ_DATA_0      MIP_BRUST_S00_AXI_SLV_REG3_OFFSET
+
+
+#define WRITE_COMMAND 0x0000CDAC
+#define READ_COMMAND  0xCDAC2020
+
+///////////////////////////////////////////////////////////////////////////////
+#define SHAREABLE (1 << 16)
+#define NON_CACHED (0)
+#define WB_WA_CACHE (1) /* write back, write allocate */
+#define WT_CACHE (2) /* write thru */
+#define WB_CACHE (3) /* write back */
+#define INNER_SHIFT (2)
+#define OUTER_SHIFT (12)
+#define TEX_MSB (1 << 14)
+#define AP_FAULT (0) /* no access, a fault */
+#define AP_FULL (3 << 10) /* full access */
+#define DOMAIN(x) (x << 5)
+#define INNER_NON_CACHED (NON_CACHED << INNER_SHIFT)
+#define INNER_WB_WA (WB_WA_CACHE << INNER_SHIFT)
+#define INNER_WT (WT_CACHE << INNER_SHIFT)
+#define INNER_WB (WB_CACHE << INNER_SHIFT)
+#define OUTER_NON_CACHED (TEX_MSB | (NON_CACHED << OUTER_SHIFT))
+#define OUTER_WB_WA (TEX_MSB | (WB_WA_CACHE << OUTER_SHIFT))
+#define OUTER_WT (TEX_MSB | (WT_CACHE << OUTER_SHIFT))
+#define OUTER_WB (TEX_MSB | (WB_CACHE << OUTER_SHIFT))
+#define SECTION(attributes) ((attributes) | 0x2)
+#define SUPER_SECTION(attributes) ((attributes) | 0x4002)
+/* Set the OCM and DDR sections up to match what the standalone BSP does */
+u32 Attributes = SECTION(SHAREABLE | OUTER_NON_CACHED | AP_FULL | INNER_WT);
+///////////////////////////////////////////////////////////////////////////////////
+
+
+#define DDR_INITIAL_VAL  0xCDAC5000
+
+
+
+int main()
+{
+    init_platform();
+
+   int value=0;
+
+    print(" Hello World, Testing MIP (MY IP) Read and Write functionality \n\r");
+
+   Xil_SetTlbAttributes(DDR_ADDRESS_READ, Attributes);
+
+
+
+   char* binaryString[512] =  {"0100001001110101111010111000010101000010000001000001010001111011",
+		   "0100000111010111001100110011001101000010001101111001100110011010",
+		   "0100000110001001111010111000010101000001101101101011100001010010",
+		   "0100000111110011111010111000010101000001111101110001111010111000",
+		   "0100000111111010111000010100100001000010110000111111000010100100",
+		   "0100000101111110000101000111101101000010100011110100001010001111",
+		   "0100000111101011010001111010111001000001111000110101110000101001",
+		   "0100000100100111100001010001111101000010100011001111000010100100",
+		   "0100000111110111010111000010100101000001110001011010111000010100",
+		   "0100000110011001010001111010111001000001101011100011110101110001",
+		   "0100001010000101100000000000000001000001101100110111000010100100",
+		   "0100001000000101000111101011100001000010110000111011100001010010",
+		   "0100001010111110101000111101011101000010000011001000111101011100",
+		   "0100000111001111010001111010111001000001111000000010100011110110",
+		   "0100000111010000010100011110110001000010101110101001010001111011",
+		   "0011111111111110101110000101001001000010101011110000101000111101",
+		   "0100000111010010011001100110011001000001111001110000101000111101",
+		   "0100001000000101101011100001010001000010001011100010100011110110",
+		   "0100001001001110111010111000010101000010011111111010111000010100",
+		   "0100001010010100110111000010100101000010101001100010111000010100",
+		   "0100001001110111100011110101110001000010101101001001111010111000",
+		   "0100001001011010111000010100100001000010101101101001100110011010",
+		   "0100000110010101110101110000101001000010100000100110000101001000",
+		   "0100001001110111000101000111101101000010010001101001100110011010",
+		   "0100001010110011110001111010111001000010101000011101110000101001",
+		   "0100001010001110110111000010100101000010011000101000111101011100"
+
+};
+
+// convert binary string to integer
+long long value_1 = (long long)strtoll(binaryString[1], NULL, 2);
+
+printf("%lld", value_1);
+/*
+
+
+char szNumbers[] = "2001 60c0c0 -1101110100110100100000 0100001001110101111010111000010101000010000001000001010001111000";
+  char * pEnd;
+  long int li1, li2, li3, li4;
+  li1 = strtol (szNumbers,&pEnd,10);
+  li2 = strtol (pEnd,&pEnd,16);
+  li3 = strtol (pEnd,&pEnd,2);
+  li4 = strtol (pEnd,NULL,0);
+  printf ("The decimal equivalents are: %ld, %ld, %ld and %ld.\n", li1, li2, li3, li4);
+  return 0;
+*/
+
+/*
+//----------------------------------------------------------------------------------------------
+    printf(" WRITE the DDR Region through Processor");  printf("\n");
+	   for (int h = 0; h < No_of_TXN; h++)
+	   {
+		    Xil_Out32(DDR_ADDRESS_READ+4*h, DDR_INITIAL_VAL+h);
+	        printf("DDR_Value at  0x%x : 0x%x ",DDR_ADDRESS_READ+4*h, DDR_INITIAL_VAL+h);  printf("\n");
+
+	   }
+
+	printf(" Reading the DDR Region through Processor");  printf("\n");
+	   for (int h = 0; h < No_of_TXN; h++)
+	   {
+		    value = Xil_In32(DDR_ADDRESS_READ+4*h);
+	        printf("DDR_Value at  0x%x : 0x%x ",DDR_ADDRESS_READ+4*h, value);  printf("\n");
+
+	   }
+
+	  value = FFT_WOB_mReadReg(BASEADDR,CMD_CNTRL);
+      printf("status value : %d \n", value);
+
+    //-------------3DFFT----------------------------------------
+      FFT_WOB_mWriteReg(BASEADDR,ADRRESS,DDR_ADDRESS_READ); // address
+
+      for(int i=0; i<512; ++i){
+
+    	  FFT_WOB_mWriteReg(BASEADDR,ADRRESS,DDR_ADDRESS_READ+8*i);
+    	 FFT_WOB_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
+        // FFT_WOB_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
+     }
+
+	  value = FFT_WOB_mReadReg(BASEADDR,CMD_CNTRL);
+while(!(value & 0x00000002))
+{
+	  printf("STATUS.... %d\n", value);
+	  value = FFT_WOB_mReadReg(BASEADDR,CMD_CNTRL);
+}
+printf("STATUS.... %d\n", value);
+
+FFT_WOB_mWriteReg(BASEADDR,ADRRESS, DDR_ADDRESS_WRITE); // address
+
+for(int i=0; i<No_of_TXN; ++i){
+
+	 FFT_WOB_mWriteReg(BASEADDR,CMD_CNTRL,0x00000004); // START READ ----
+  // FFT_WOB_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
+}
+
+printf(" Reading the DDR Region through Processor");  printf("\n");
+   for (int h = 0; h < No_of_TXN; h++)
+   {
+	    value = Xil_In32(DDR_ADDRESS_WRITE+4*h);
+        printf("After OPERATINS...........DDR_Value at  0x%x : 0x%x ",DDR_ADDRESS_WRITE+4*h, value);  printf("\n");
+
+   }
+
+    printf("\n ***** Testing is Ended ***** \n ");
+
+*/
+
+
+    cleanup_platform();
+    return 0;
+}
