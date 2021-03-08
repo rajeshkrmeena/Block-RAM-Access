@@ -5,7 +5,7 @@
 #include "xparameters.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include "FFT_3D.h"
+#include "FFT_WOB.h"
 #include "xil_io.h"
 //#include "fft-complex.h"
 
@@ -41,11 +41,11 @@ XUartPs_Config *Config_1;
 XUartPs Uart_PS_1;
 
 #define BASEADDR       0x43C00000
-#define CMD_CNTRL      FFT_3D_S00_AXI_SLV_REG0_OFFSET
-#define ADRRESS        FFT_3D_S00_AXI_SLV_REG1_OFFSET
+#define CMD_CNTRL      FFT_WOB_S00_AXI_SLV_REG0_OFFSET
+#define ADRRESS        FFT_WOB_S00_AXI_SLV_REG1_OFFSET
 //#define DDR_ADDRESS_READ  0xFFFC0000
-#define DDR_ADDRESS_READ  0x0004000
-#define DDR_ADDRESS_WRITE 0x00200000
+#define DDR_ADDRESS_READ  0x00004000
+#define DDR_ADDRESS_WRITE 0x00006000
 #define DDR_INITIAL_VAL  0xCDAC5010
 
 long long binaryToDecimal(char n[64])
@@ -118,37 +118,38 @@ int main()
 
 	   }
 //---------------------------3DFFT Start----------------------------------------------
-	   value = FFT_3D_mReadReg(BASEADDR,CMD_CNTRL);
+	   value = FFT_WOB_mReadReg(BASEADDR,CMD_CNTRL);
 	        printf("status value : %d \n", value);
 
 	//-------------3DFFT----------------------------------------
-	        FFT_3D_mWriteReg(BASEADDR,ADRRESS,DDR_ADDRESS_READ); // address
-	      // for(int i=0; i<16; ++i){
+	       for(int i=0; i<No_OF_TXN; ++i){
+		           FFT_WOB_mWriteReg(BASEADDR,ADRRESS,DDR_ADDRESS_READ+i*8); // address
+	               FFT_WOB_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
+	          }
 
-	      	 FFT_3D_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
-	          // FFT_3D_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
-	      // }
+	  	  value = FFT_WOB_mReadReg(BASEADDR,CMD_CNTRL);
 
-	  	  value = FFT_3D_mReadReg(BASEADDR,CMD_CNTRL);
 	  while(!(value & 0x00000002))
 	  {
-	  	  printf("STATUS.... %d\n", value);
-	  	  value = FFT_3D_mReadReg(BASEADDR,CMD_CNTRL);
+	  	  printf("STATUS....[FFT_ACTIVE]... %d\n", value);
+	  	  value = FFT_WOB_mReadReg(BASEADDR,CMD_CNTRL);
 	  }
-	  printf("STATUS.... %d\n", value);
 
-	  FFT_3D_mWriteReg(BASEADDR,ADRRESS, DDR_ADDRESS_WRITE); // address
-	  for(int i=0; i<16; ++i){
+	  printf(" Final STATUS.... %d\n", value);
 
-	  	 FFT_3D_mWriteReg(BASEADDR,CMD_CNTRL,0x00000004); // START READ ----
+
+	  for(int i=0; i<No_OF_TXN; ++i){
+
+		  FFT_WOB_mWriteReg(BASEADDR,ADRRESS, DDR_ADDRESS_WRITE+8*i); // address
+		  FFT_WOB_mWriteReg(BASEADDR,CMD_CNTRL,0x00000004); // START READ ----
 	    // FFT_3D_mWriteReg(BASEADDR,CMD_CNTRL,0x00000001); // START READ ----
 	  }
-
+//--------------------------------------------------------------------------------------------
 	  printf(" Reading the DDR Region through Processor");  printf("\n");
 	     for (int h = 0; h < No_OF_TXN; h++)
 	     {
-	  	    value = Xil_In32(DDR_ADDRESS_WRITE+4*h);
-	          printf("After OPERATINS...........DDR_Value at  0x%x : 0x%x ",DDR_ADDRESS_WRITE+4*h, value);  printf("\n");
+	    	 uint64_t value = Xil_In64(DDR_ADDRESS_WRITE+8*h);
+	          printf("After OPERATINS...........DDR_Value at  0x%x : 0x%llx ",DDR_ADDRESS_WRITE+8*h, value);  printf("\n");
 
 	     }
 
